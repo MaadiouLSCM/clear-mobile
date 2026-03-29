@@ -59,9 +59,9 @@ export default function Dashboard() {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
         <KpiCard icon="⬡" label={t('activeJobs')} value={loading ? '—' : stats.active} color={C.gold} bg={C.goldDim} onClick={() => nav('/jobs')} />
-        <KpiCard icon="✓" label={t('myTasks')} value={loading ? '—' : stats.tasks} color={C.blue} bg={C.blueDim} />
-        <KpiCard icon="◫" label={t('docsToReview')} value={loading ? '—' : stats.docs} color={C.orange} bg={C.orangeDim} />
-        <KpiCard icon="▲" label={t('alerts')} value={loading ? '—' : stats.alerts} color={C.red} bg={C.redDim} />
+        <KpiCard icon="✓" label={t('myTasks')} value={loading ? '—' : stats.tasks} color={C.blue} bg={C.blueDim} onClick={() => nav('/jobs')} />
+        <KpiCard icon="◫" label={t('docsToReview')} value={loading ? '—' : stats.docs} color={C.orange} bg={C.orangeDim} onClick={() => nav('/jobs')} />
+        <KpiCard icon="▲" label={t('alerts')} value={loading ? '—' : stats.alerts} color={C.red} bg={C.redDim} onClick={() => nav('/jobs')} />
       </div>
       <div style={{ marginBottom: 24 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: C.mid, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{t('quickActions')}</div>
