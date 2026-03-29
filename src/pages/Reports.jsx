@@ -120,7 +120,7 @@ export default function Reports() {
               padding: '10px 0', borderRadius: 10, border: 'none', cursor: 'pointer',
               background: form.type === rt ? C.goldDim : C.surface,
               color: form.type === rt ? C.gold : C.muted,
-              border: `1px solid ${form.type === rt ? C.goldBorder : C.border}`,
+              outline: `1px solid ${form.type === rt ? C.goldBorder : C.border}`,
               fontSize: 13, fontWeight: 700,
             }}>
               {rt === 'inspection' ? '🔍' : rt === 'collection' ? '📦' : rt === 'delivery' ? '🚛' : '⚠️'}{' '}

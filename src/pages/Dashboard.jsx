@@ -10,7 +10,6 @@ function KpiCard({ icon, label, value, color, bg, onClick }) {
       background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14,
       padding: '14px 16px', cursor: onClick ? 'pointer' : 'default',
       display: 'flex', alignItems: 'center', gap: 12,
-      transition: 'border-color 0.2s',
     }}>
       <div style={{
         width: 40, height: 40, borderRadius: 10, background: bg || C.goldDim,
@@ -25,28 +24,25 @@ function KpiCard({ icon, label, value, color, bg, onClick }) {
   );
 }
 
-function JobRow({ job, onClick }) {
-  const st = STATUS_MAP[job.status] || { color: C.muted, bg: 'rgba(107,114,128,0.12)', label: job.status };
-  return (
-    <div onClick={onClick} style={{
-      display: 'flex', alignItems: 'center', gap: 12,
-      padding: '12px 0', borderBottom: `1px solid ${C.border}`,
-      cursor: 'pointer',
-    }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: C.gold, fontFamily: FONTS.mono }}>
-          {job.lscmRef || job.reference || `JOB-${String(job.id).padStart(3,'0')}`}
-        </div>
-        <div style={{ fontSize: 12, color: C.muted, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {typeof job.client === 'string' ? job.client : job.client?.name || '—'} · {job.corridor || '—'}
-        </div>
-      </div>
-      <span style={{
-        fontSize: 10, fontWeight: 700, padding: '4px 8px', borderRadius: 6,
-        background: st.bg, color: st.color, whiteSpace: 'nowrap',
-      }}>{st.label}</span>
-    </div>
-  );
+function safeArray(d) {
+  try {
+    if (Array.isArray(d)) return d;
+    if (d && Array.isArray(d.data)) return d.data;
+    if (d && typeof d === 'object') {
+      const keys = Object.keys(d);
+      for (const k of keys) {
+        if (Array.isArray(d[k])) return d[k];
+      }
+    }
+    return [];
+  } catch { return []; }
+}
+
+function safeString(val) {
+  if (val === null || val === undefined) return '—';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'object' && val.name) return String(val.name);
+  return String(val);
 }
 
 export default function Dashboard() {
@@ -55,28 +51,41 @@ export default function Dashboard() {
   const [stats, setStats] = useState({ active: 0, tasks: 0, docs: 0, alerts: 0 });
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    Promise.allSettled([
-      api('/jobs').then(d => {
-        const list = Array.isArray(d) ? d : d?.data || [];
-        setJobs(list.slice(0, 8));
-        const active = list.filter(j => !['CLOSED','DELIVERED','ABORTED','INVOICED'].includes(j.status)).length;
-        setStats(s => ({ ...s, active }));
-      }),
-      api('/tasks').then(d => {
-        const list = Array.isArray(d) ? d : d?.data || [];
-        setStats(s => ({ ...s, tasks: list.filter(t => t.status !== 'DONE').length }));
-      }),
-      api('/documents').then(d => {
-        const list = Array.isArray(d) ? d : d?.data || [];
-        setStats(s => ({ ...s, docs: list.filter(doc => doc.status === 'PENDING' || doc.status === 'DRAFT').length }));
-      }),
-      api('/copq').then(d => {
-        const list = Array.isArray(d) ? d : d?.data || [];
-        setStats(s => ({ ...s, alerts: list.filter(c => c.status === 'OPEN').length }));
-      }),
-    ]).finally(() => setLoading(false));
+    let mounted = true;
+    async function load() {
+      try {
+        const [jobsRes, tasksRes, docsRes, copqRes] = await Promise.allSettled([
+          api('/jobs').catch(() => []),
+          api('/tasks').catch(() => []),
+          api('/documents').catch(() => []),
+          api('/copq').catch(() => []),
+        ]);
+
+        if (!mounted) return;
+
+        const jobList = safeArray(jobsRes.status === 'fulfilled' ? jobsRes.value : []);
+        const taskList = safeArray(tasksRes.status === 'fulfilled' ? tasksRes.value : []);
+        const docList = safeArray(docsRes.status === 'fulfilled' ? docsRes.value : []);
+        const copqList = safeArray(copqRes.status === 'fulfilled' ? copqRes.value : []);
+
+        setJobs(jobList.slice(0, 8));
+        setStats({
+          active: jobList.filter(j => j && !['CLOSED','DELIVERED','ABORTED','INVOICED'].includes(j.status)).length,
+          tasks: taskList.filter(t => t && t.status !== 'DONE').length,
+          docs: docList.filter(d => d && (d.status === 'PENDING' || d.status === 'DRAFT')).length,
+          alerts: copqList.filter(c => c && c.status === 'OPEN').length,
+        });
+      } catch (err) {
+        if (mounted) setError(String(err?.message || 'Load failed'));
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    load();
+    return () => { mounted = false; };
   }, []);
 
   return (
@@ -89,6 +98,12 @@ export default function Dashboard() {
         </div>
         <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>CLEAR ERP v4.6 — LSCM</div>
       </div>
+
+      {error && (
+        <div style={{ background: C.orangeDim, border: `1px solid ${C.orange}33`, borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 12, color: C.orange }}>
+          API: {error} — showing cached data
+        </div>
+      )}
 
       {/* KPI Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
@@ -112,10 +127,10 @@ export default function Dashboard() {
             <button key={a.label} onClick={() => navigate(a.to)} style={{
               flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12,
               padding: '12px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column',
-              alignItems: 'center', gap: 6,
+              alignItems: 'center', gap: 6, color: C.text,
             }}>
               <span style={{ fontSize: 22 }}>{a.icon}</span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: C.text }}>{a.label}</span>
+              <span style={{ fontSize: 11, fontWeight: 600 }}>{a.label}</span>
             </button>
           ))}
         </div>
@@ -132,11 +147,33 @@ export default function Dashboard() {
           }}>{t('viewAll')} →</button>
         </div>
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 32, color: C.muted }}>...</div>
+          <div style={{ textAlign: 'center', padding: 32, color: C.muted }}>Loading...</div>
         ) : jobs.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 32, color: C.muted }}>No jobs yet</div>
         ) : (
-          jobs.map(j => <JobRow key={j.id} job={j} onClick={() => navigate(`/jobs/${j.id}`)} />)
+          jobs.map(j => {
+            if (!j) return null;
+            const st = STATUS_MAP[j.status] || { color: C.muted, bg: 'rgba(107,114,128,0.12)', label: j.status || '?' };
+            return (
+              <div key={j.id} onClick={() => navigate(`/jobs/${j.id}`)} style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '12px 0', borderBottom: `1px solid ${C.border}`, cursor: 'pointer',
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: C.gold, fontFamily: FONTS.mono }}>
+                    {safeString(j.lscmRef || j.reference || `JOB-${String(j.id).padStart(3,'0')}`)}
+                  </div>
+                  <div style={{ fontSize: 12, color: C.muted, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {safeString(j.client)} · {safeString(j.corridor)}
+                  </div>
+                </div>
+                <span style={{
+                  fontSize: 10, fontWeight: 700, padding: '4px 8px', borderRadius: 6,
+                  background: st.bg, color: st.color, whiteSpace: 'nowrap',
+                }}>{st.label}</span>
+              </div>
+            );
+          })
         )}
       </div>
     </div>

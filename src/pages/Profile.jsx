@@ -57,7 +57,7 @@ export default function Profile() {
               padding: '8px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
               background: lang === l.code ? C.goldDim : C.surface2,
               color: lang === l.code ? C.gold : C.muted,
-              border: `1px solid ${lang === l.code ? C.goldBorder : C.border}`,
+              outline: `1px solid ${lang === l.code ? C.goldBorder : C.border}`,
               fontSize: 13, fontWeight: 600,
             }}>
               {l.flag} {l.label}

@@ -9,7 +9,35 @@ import JobDetail from './pages/JobDetail';
 import Scan from './pages/Scan';
 import Reports from './pages/Reports';
 import Profile from './pages/Profile';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Component } from 'react';
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 32, textAlign: 'center', color: '#E8EAF0', background: '#0D0F14', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ fontSize: 40, marginBottom: 16 }}>⚠️</div>
+          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: '#F5A800' }}>CLEAR Field Error</div>
+          <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 20, maxWidth: 300, wordBreak: 'break-word' }}>
+            {String(this.state.error?.message || 'Unknown error')}
+          </div>
+          <button onClick={() => { this.setState({ hasError: false, error: null }); window.location.href = '/'; }}
+            style={{ background: '#F5A800', border: 'none', borderRadius: 10, padding: '10px 24px', color: '#0D0F14', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+            Reload
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function BottomNav() {
   const { t } = useI18n();
@@ -31,7 +59,6 @@ function BottomNav() {
       background: C.surface, borderTop: `1px solid ${C.border}`,
       display: 'flex', justifyContent: 'space-around', alignItems: 'center',
       paddingBottom: 'env(safe-area-inset-bottom, 8px)', paddingTop: 6,
-      backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
     }}>
       {tabs.map(tab => {
         const active = tab.key === '/' ? path === '/' : path.startsWith(tab.key);
@@ -40,23 +67,18 @@ function BottomNav() {
             background: 'none', border: 'none', cursor: 'pointer',
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
             padding: '4px 12px', minWidth: 56,
-            transition: 'all 0.2s ease',
           }}>
-            <span style={{
-              fontSize: tab.accent ? 28 : 20,
-              color: active ? C.gold : C.muted,
-              lineHeight: 1,
-              ...(tab.accent && !active ? {
-                background: C.surface2, borderRadius: '50%',
-                width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: `2px solid ${C.border}`,
-              } : {}),
-              ...(tab.accent && active ? {
-                background: C.gold, borderRadius: '50%',
-                width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: C.bg,
-              } : {}),
-            }}>{tab.icon}</span>
+            {tab.accent ? (
+              <div style={{
+                fontSize: 22, lineHeight: '44px', textAlign: 'center',
+                background: active ? C.gold : C.surface2,
+                borderRadius: '50%', width: 44, height: 44,
+                color: active ? C.bg : C.muted,
+                border: active ? 'none' : `2px solid ${C.border}`,
+              }}>{tab.icon}</div>
+            ) : (
+              <div style={{ fontSize: 20, color: active ? C.gold : C.muted, lineHeight: '24px', height: 24 }}>{tab.icon}</div>
+            )}
             <span style={{
               fontSize: 10, fontWeight: active ? 700 : 500,
               color: active ? C.gold : C.muted,
@@ -71,14 +93,17 @@ function BottomNav() {
 
 function StatusBar() {
   const { t } = useI18n();
-  const [online, setOnline] = useState(navigator.onLine);
+  const [online, setOnline] = useState(true);
 
   useEffect(() => {
-    const on = () => setOnline(true);
-    const off = () => setOnline(false);
-    window.addEventListener('online', on);
-    window.addEventListener('offline', off);
-    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+    try {
+      setOnline(navigator.onLine);
+      const on = () => setOnline(true);
+      const off = () => setOnline(false);
+      window.addEventListener('online', on);
+      window.addEventListener('offline', off);
+      return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+    } catch (e) { /* ignore */ }
   }, []);
 
   return (
@@ -112,7 +137,7 @@ function StatusBar() {
 
 function ProtectedRoute({ children }) {
   if (!isAuthenticated()) return <Navigate to="/login" replace />;
-  return children;
+  return <ErrorBoundary>{children}</ErrorBoundary>;
 }
 
 export default function App() {
@@ -121,27 +146,29 @@ export default function App() {
   const isLogin = location.pathname === '/login';
 
   return (
-    <div dir={isRtl ? 'rtl' : 'ltr'} style={{ height: '100%', background: C.bg }}>
-      {!isLogin && <StatusBar />}
-      <main style={{
-        height: '100%',
-        paddingTop: isLogin ? 0 : 52,
-        paddingBottom: isLogin ? 0 : 72,
-        overflowY: 'auto',
-        WebkitOverflowScrolling: 'touch',
-      }}>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/jobs" element={<ProtectedRoute><Jobs /></ProtectedRoute>} />
-          <Route path="/jobs/:id" element={<ProtectedRoute><JobDetail /></ProtectedRoute>} />
-          <Route path="/scan" element={<ProtectedRoute><Scan /></ProtectedRoute>} />
-          <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </main>
-      {!isLogin && <BottomNav />}
-    </div>
+    <ErrorBoundary>
+      <div dir={isRtl ? 'rtl' : 'ltr'} style={{ height: '100%', background: C.bg }}>
+        {!isLogin && <StatusBar />}
+        <main style={{
+          height: '100%',
+          paddingTop: isLogin ? 0 : 52,
+          paddingBottom: isLogin ? 0 : 72,
+          overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch',
+        }}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/jobs" element={<ProtectedRoute><Jobs /></ProtectedRoute>} />
+            <Route path="/jobs/:id" element={<ProtectedRoute><JobDetail /></ProtectedRoute>} />
+            <Route path="/scan" element={<ProtectedRoute><Scan /></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
+        {!isLogin && <BottomNav />}
+      </div>
+    </ErrorBoundary>
   );
 }
