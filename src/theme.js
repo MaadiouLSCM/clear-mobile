@@ -34,6 +34,7 @@ export const STATUS_MAP = {
   DOCUMENT_ASSEMBLY: { color: C.orange, bg: C.orangeDim, label: 'Doc Assembly' },
   PLANNING: { color: C.purple, bg: C.purpleDim, label: 'Planning' },
   COLLECTION: { color: C.blue, bg: C.blueDim, label: 'Collection' },
+  AT_HUB: { color: C.purple, bg: C.purpleDim, label: 'At Hub' },
   CONSOLIDATION: { color: C.purple, bg: C.purpleDim, label: 'Consolidation' },
   GREEN_LIGHT: { color: C.gold, bg: C.goldDim, label: 'Green Light' },
   EXPORT_DEPARTURE: { color: C.blue, bg: C.blueDim, label: 'Export' },
