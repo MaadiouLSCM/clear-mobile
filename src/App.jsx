@@ -9,6 +9,9 @@ import JobDetail from './pages/JobDetail';
 import Scan from './pages/Scan';
 import Reports from './pages/Reports';
 import Profile from './pages/Profile';
+import Tasks from './pages/Tasks';
+import Documents from './pages/Documents';
+import Alerts from './pages/Alerts';
 import { useState, useEffect, Component } from 'react';
 
 class ErrorBoundary extends Component {
@@ -161,6 +164,9 @@ export default function App() {
             <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/jobs" element={<ProtectedRoute><Jobs /></ProtectedRoute>} />
             <Route path="/jobs/:id" element={<ProtectedRoute><JobDetail /></ProtectedRoute>} />
+            <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
+            <Route path="/documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
+            <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
             <Route path="/scan" element={<ProtectedRoute><Scan /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
