@@ -12,6 +12,7 @@ import Profile from './pages/Profile';
 import Tasks from './pages/Tasks';
 import Documents from './pages/Documents';
 import Alerts from './pages/Alerts';
+import Tracking from './pages/Tracking';
 import { useState, useEffect, Component } from 'react';
 
 class ErrorBoundary extends Component {
@@ -167,6 +168,7 @@ export default function App() {
             <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
             <Route path="/documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
             <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
+            <Route path="/tracking" element={<ProtectedRoute><Tracking /></ProtectedRoute>} />
             <Route path="/scan" element={<ProtectedRoute><Scan /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

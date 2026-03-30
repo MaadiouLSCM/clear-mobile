@@ -66,7 +66,7 @@ export default function Dashboard() {
       <div style={{ marginBottom: 24 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: C.mid, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{t('quickActions')}</div>
         <div style={{ display: 'flex', gap: 8 }}>
-          {[{ icon: '📋', label: t('newRfc'), to: '/reports' }, { icon: '📷', label: t('scanQr'), to: '/scan' }, { icon: '📝', label: t('fieldReport'), to: '/reports' }].map(a => (
+          {[{ icon: '📡', label: t('tracking'), to: '/tracking' }, { icon: '📋', label: t('newRfc'), to: '/reports' }, { icon: '📷', label: t('scanQr'), to: '/scan' }, { icon: '📝', label: t('fieldReport'), to: '/reports' }].map(a => (
             <button key={a.to + a.label} onClick={() => nav(a.to)} style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: '12px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, color: C.text }}>
               <span style={{ fontSize: 22 }}>{a.icon}</span>
               <span style={{ fontSize: 11, fontWeight: 600 }}>{a.label}</span>
