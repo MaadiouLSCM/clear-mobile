@@ -4,6 +4,7 @@ import { useI18n } from '../i18n';
 import { api } from '../api';
 import { C, FONTS, STATUS_MAP } from '../theme';
 import { arr, jobRef, clientStr, corridorStr } from '../safe';
+import PendingGuides from './PendingGuides';
 
 function KpiCard({ icon, label, value, color, bg, onClick }) {
   return (
@@ -51,6 +52,7 @@ export default function Dashboard() {
 
   return (
     <div style={{ padding: '16px 16px 24px' }}>
+      <PendingGuides />
       <div style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 22, fontWeight: 800, fontFamily: FONTS.display, color: C.text }}>
           {new Date().getHours() < 12 ? '☀️' : new Date().getHours() < 18 ? '🌤' : '🌙'} {t('dashboard')}

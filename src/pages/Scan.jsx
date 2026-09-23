@@ -5,6 +5,15 @@ import { api } from '../api';
 import { C, FONTS, STATUS_MAP } from '../theme';
 import { arr, str, jobRef, clientStr, corridorStr } from '../safe';
 
+// S161 — iOS browsers have no BarcodeDetector: camera scans never matched on iPhone/iPad. jsQR (vendored in
+// public/assets, MIT) decodes the frame when BarcodeDetector is missing.
+let jsqrLoading = null;
+function loadJsQR() {
+  if (window.jsQR) return Promise.resolve(window.jsQR);
+  if (!jsqrLoading) jsqrLoading = new Promise((ok, ko) => { const s = document.createElement('script'); s.src = '/assets/jsQR.min.js'; s.onload = () => ok(window.jsQR); s.onerror = ko; document.head.appendChild(s); });
+  return jsqrLoading;
+}
+
 export default function Scan() {
   const { t } = useI18n();
   const nav = useNavigate();
@@ -28,22 +37,36 @@ export default function Scan() {
   };
   useEffect(() => () => stopCam(), []);
   useEffect(() => {
-    if (!scanning || !('BarcodeDetector' in window)) return;
+    if (!scanning) return;
+    const native = 'BarcodeDetector' in window;
+    if (!native) loadJsQR().catch(() => setCamErr(true));
+    const hit = (value) => { stopCam(); setQuery(value); doSearch(value); };
     const iv = setInterval(() => {
-      if (!videoRef.current || !canvasRef.current) return;
+      if (!videoRef.current || !canvasRef.current || !videoRef.current.videoWidth) return;
       const v = videoRef.current, c = canvasRef.current;
       c.width = v.videoWidth; c.height = v.videoHeight;
-      c.getContext('2d').drawImage(v, 0, 0);
-      new BarcodeDetector({ formats: ['qr_code','code_128','ean_13'] }).detect(c).then(codes => {
-        if (codes.length > 0) { stopCam(); setQuery(codes[0].rawValue); doSearch(codes[0].rawValue); }
-      }).catch(() => {});
-    }, 600);
+      const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.drawImage(v, 0, 0);
+      if (native) {
+        new BarcodeDetector({ formats: ['qr_code','code_128','ean_13'] }).detect(c).then(codes => { if (codes.length > 0) hit(codes[0].rawValue); }).catch(() => {});
+      } else if (window.jsQR) {
+        const img = ctx.getImageData(0, 0, c.width, c.height);
+        const r = window.jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+        if (r && r.data) hit(r.data);
+      }
+    }, 450);
     return () => clearInterval(iv);
   }, [scanning]);
 
   const doSearch = async (q) => {
     if (!q.trim()) return;
     setResult({ loading: true });
+    // S161 — one server resolver: item sticker « item#k/n », shipping-mark QR / SM ref, job ref or PO number.
+    try {
+      const r = await api(`/scan/resolve/${encodeURIComponent(q.trim())}`);
+      if (r?.type === 'ITEM') { setResult({ found: true, type: 'ITEM', data: r.item, sticker: r.sticker }); return; }
+      if (r?.type === 'BOX') { setResult({ found: true, type: 'BOX', data: r.box }); return; }
+      if (r?.type === 'JOB') { setResult({ found: true, type: 'JOB', data: r.job }); return; }
+    } catch { /* not resolved server-side: fall back to the local search below */ }
     try {
       const jobs = arr(await api('/jobs').catch(() => []));
       const m = jobs.find(j => jobRef(j).toLowerCase().includes(q.toLowerCase()) || String(j.poNumber || '').toLowerCase().includes(q.toLowerCase()) || j.id === q);
@@ -83,7 +106,7 @@ export default function Scan() {
         </div>
       </div>
       {result && !result.loading && (result.found ? (
-        <div onClick={() => { if (result.type === 'JOB') nav('/jobs/' + result.data.id); }} style={{ background: C.greenDim, border: `1px solid ${C.green}33`, borderRadius: 14, padding: 16, cursor: result.type === 'JOB' ? 'pointer' : 'default' }}>
+        <div onClick={() => { const id = result.type === 'JOB' ? result.data.id : result.data.job?.id || result.data.jobId; if (id) nav('/jobs/' + id); }} style={{ background: C.greenDim, border: `1px solid ${C.green}33`, borderRadius: 14, padding: 16, cursor: result.type === 'JOB' ? 'pointer' : 'default' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <span style={{ color: C.green, fontWeight: 800, fontSize: 14 }}>{'✓ ' + t('found')}</span>
             <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: C.goldDim, color: C.gold }}>{result.type}</span>
@@ -94,7 +117,11 @@ export default function Scan() {
           </>)}
           {result.type === 'ITEM' && (<>
             <div style={{ fontWeight: 700, fontSize: 14, color: C.text, marginBottom: 4 }}>{str(result.data.description || result.data.itemNumber)}</div>
-            <div style={{ fontSize: 12, color: C.muted }}>{result.data.quantity != null ? 'Qty: ' + result.data.quantity + ' ' : ''}{str(result.data.unit)}</div>
+            <div style={{ fontSize: 12, color: C.muted }}>{result.data.quantity != null ? 'Qty: ' + result.data.quantity + ' ' : ''}{str(result.data.unit)}{result.sticker ? ` · sticker ${result.sticker.k}/${result.sticker.n}` : ''}{result.data.job?.ref ? ' · ' + result.data.job.ref : ''}</div>
+          </>)}
+          {result.type === 'BOX' && (<>
+            <div style={{ fontFamily: FONTS.mono, fontWeight: 700, fontSize: 16, color: C.gold, marginBottom: 4 }}>{str(result.data.smRef)}</div>
+            <div style={{ fontSize: 12, color: C.muted }}>{`Package ${result.data.packageNumber}/${result.data.totalPackages} · ${result.data._count?.items ?? 0} item(s)`}{result.data.job?.ref ? ' · ' + result.data.job.ref : ''}</div>
           </>)}
         </div>
       ) : (
