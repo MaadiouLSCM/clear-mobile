@@ -34,7 +34,12 @@ export default function Scan() {
     catch (e) { setMsg(`✕ ${e.message}`); }
   };
   const loadBox = async (box) => {
-    try { const m = await api(`/containers/${active.id}/load`, { method: 'POST', body: { boxIds: [box.id] } }); setMsg(`✓ ${box.smRef} loaded in ${active.containerNumber || 'container'} — ${m.counts.boxes} box(es), ${m.counts.pieces} piece(s)`); }
+    try {
+      const m = await api(`/containers/${active.id}/load`, { method: 'POST', body: { boxIds: [box.id] } });
+      // S163 — progress against the loading plan: the seal is refused until everything planned is proven inside
+      const k = await api(`/containers/${active.id}/stuffing-check`).catch(() => null);
+      setMsg(`✓ ${box.smRef} loaded in ${active.containerNumber || 'container'} — ${m.counts.boxes} box(es)${k ? ` · plan ${k.proven.boxes}/${k.planned.boxes} proven${k.extraBoxes.length ? ` · NOT IN PLAN: ${k.extraBoxes.join(', ')}` : ''}${k.complete ? ' · ready to seal' : ''}` : ''}`);
+    }
     catch (e) { setMsg(`✕ ${e.message}`); }
   };
   const videoRef = useRef(null);
