@@ -21,6 +21,14 @@ export default function Scan() {
   const [result, setResult] = useState(null);
   const [scanning, setScanning] = useState(false);
   const [camErr, setCamErr] = useState(false);
+  // S161 — scan-to-load at the hub: scan a container (becomes active), then scan boxes and load them into it.
+  const [active, setActive] = useState(() => { try { return JSON.parse(localStorage.getItem('clear-active-container') || 'null'); } catch { return null; } });
+  const [msg, setMsg] = useState('');
+  const setActiveContainer = (c) => { setActive(c); if (c) localStorage.setItem('clear-active-container', JSON.stringify(c)); else localStorage.removeItem('clear-active-container'); };
+  const loadBox = async (box) => {
+    try { const m = await api(`/containers/${active.id}/load`, { method: 'POST', body: { boxIds: [box.id] } }); setMsg(`✓ ${box.smRef} loaded in ${active.containerNumber || 'container'} — ${m.counts.boxes} box(es), ${m.counts.pieces} piece(s)`); }
+    catch (e) { setMsg(`✕ ${e.message}`); }
+  };
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const canvasRef = useRef(null);
@@ -66,6 +74,7 @@ export default function Scan() {
       if (r?.type === 'ITEM') { setResult({ found: true, type: 'ITEM', data: r.item, sticker: r.sticker }); return; }
       if (r?.type === 'BOX') { setResult({ found: true, type: 'BOX', data: r.box }); return; }
       if (r?.type === 'JOB') { setResult({ found: true, type: 'JOB', data: r.job }); return; }
+      if (r?.type === 'CONTAINER') { setResult({ found: true, type: 'CONTAINER', data: r.container }); return; }
     } catch { /* not resolved server-side: fall back to the local search below */ }
     try {
       const jobs = arr(await api('/jobs').catch(() => []));
@@ -98,6 +107,11 @@ export default function Scan() {
         )}
       </div>
       <canvas ref={canvasRef} style={{ display: 'none' }} />
+      {active && <div style={{ background: C.goldDim, border: `1px solid ${C.gold}55`, borderRadius: 12, padding: 10, marginBottom: 12, fontSize: 12, color: C.text, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>{`Active container: ${active.containerNumber || active.id.slice(-6)}`}</span>
+        <button onClick={() => { setActiveContainer(null); setMsg(''); }} style={{ background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 8, padding: '4px 10px', color: C.text }}>Done</button>
+      </div>}
+      {msg && <div style={{ fontSize: 13, fontWeight: 700, color: msg.startsWith('✕') ? C.red : C.green, marginBottom: 12 }}>{msg}</div>}
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: C.mid, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{t('manualEntry')}</div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -119,6 +133,14 @@ export default function Scan() {
             <div style={{ fontWeight: 700, fontSize: 14, color: C.text, marginBottom: 4 }}>{str(result.data.description || result.data.itemNumber)}</div>
             <div style={{ fontSize: 12, color: C.muted }}>{result.data.quantity != null ? 'Qty: ' + result.data.quantity + ' ' : ''}{str(result.data.unit)}{result.sticker ? ` · sticker ${result.sticker.k}/${result.sticker.n}` : ''}{result.data.job?.ref ? ' · ' + result.data.job.ref : ''}</div>
           </>)}
+          {result.type === 'CONTAINER' && (<>
+            <div style={{ fontFamily: FONTS.mono, fontWeight: 700, fontSize: 16, color: C.gold, marginBottom: 4 }}>{str(result.data.containerNumber)}</div>
+            <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>{str(result.data.isoType)} · {str(result.data.status)}</div>
+            <button onClick={(e) => { e.stopPropagation(); setActiveContainer(result.data); setMsg('Container active — now scan the boxes to load'); }} style={{ background: C.gold, border: 'none', borderRadius: 10, padding: '10px 14px', fontWeight: 800, color: C.bg }}>Load boxes into this container</button>
+          </>)}
+          {result.type === 'BOX' && active && (<div style={{ marginBottom: 8 }}>
+            <button onClick={(e) => { e.stopPropagation(); loadBox(result.data); }} style={{ background: C.green, border: 'none', borderRadius: 10, padding: '10px 14px', fontWeight: 800, color: C.bg }}>{`Load into ${active.containerNumber || 'active container'}`}</button>
+          </div>)}
           {result.type === 'BOX' && (<>
             <div style={{ fontFamily: FONTS.mono, fontWeight: 700, fontSize: 16, color: C.gold, marginBottom: 4 }}>{str(result.data.smRef)}</div>
             <div style={{ fontSize: 12, color: C.muted }}>{`Package ${result.data.packageNumber}/${result.data.totalPackages} · ${result.data._count?.items ?? 0} item(s)`}{result.data.job?.ref ? ' · ' + result.data.job.ref : ''}</div>
