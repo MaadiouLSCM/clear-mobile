@@ -25,6 +25,14 @@ export default function Scan() {
   const [active, setActive] = useState(() => { try { return JSON.parse(localStorage.getItem('clear-active-container') || 'null'); } catch { return null; } });
   const [msg, setMsg] = useState('');
   const setActiveContainer = (c) => { setActive(c); if (c) localStorage.setItem('clear-active-container', JSON.stringify(c)); else localStorage.removeItem('clear-active-container'); };
+  // S162 — blind count: the agent types what is physically there; CLEAR never shows the expected figure.
+  const [count, setCount] = useState({ stage: 'RECEIVED_HUB', qty: '' });
+  const sendCount = async (box) => {
+    const q = parseInt(count.qty, 10);
+    if (Number.isNaN(q)) { setMsg('✕ Type what you count'); return; }
+    try { const r = await api('/custody/count', { method: 'POST', body: { stage: count.stage, boxId: box.id, countedQty: q } }); setMsg(`${r.matches ? '✓' : '✕'} ${r.message}`); setCount({ ...count, qty: '' }); }
+    catch (e) { setMsg(`✕ ${e.message}`); }
+  };
   const loadBox = async (box) => {
     try { const m = await api(`/containers/${active.id}/load`, { method: 'POST', body: { boxIds: [box.id] } }); setMsg(`✓ ${box.smRef} loaded in ${active.containerNumber || 'container'} — ${m.counts.boxes} box(es), ${m.counts.pieces} piece(s)`); }
     catch (e) { setMsg(`✕ ${e.message}`); }
@@ -140,6 +148,18 @@ export default function Scan() {
           </>)}
           {result.type === 'BOX' && active && (<div style={{ marginBottom: 8 }}>
             <button onClick={(e) => { e.stopPropagation(); loadBox(result.data); }} style={{ background: C.green, border: 'none', borderRadius: 10, padding: '10px 14px', fontWeight: 800, color: C.bg }}>{`Load into ${active.containerNumber || 'active container'}`}</button>
+          </div>)}
+          {result.type === 'BOX' && (<div onClick={(e) => e.stopPropagation()} style={{ marginBottom: 10, display: 'grid', gap: 6 }}>
+            <select value={count.stage} onChange={(e) => setCount({ ...count, stage: e.target.value })} style={{ padding: 10, borderRadius: 10, background: C.surface, color: C.text, border: `1px solid ${C.border}` }}>
+              <option value="RECEIVED_HUB">Blind count — reception at hub (packages)</option>
+              <option value="UNSTUFFED">Blind count — unstuffing (packages)</option>
+              <option value="UNBOXED">Blind count — unboxing (pieces)</option>
+              <option value="COUNTED">Blind count — stocktake (pieces)</option>
+            </select>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <input inputMode="numeric" placeholder="What you count" value={count.qty} onChange={(e) => setCount({ ...count, qty: e.target.value })} style={{ flex: 1, padding: 10, borderRadius: 10, background: C.surface, color: C.text, border: `1px solid ${C.border}` }} />
+              <button onClick={() => sendCount(result.data)} style={{ background: C.gold, border: 'none', borderRadius: 10, padding: '0 14px', fontWeight: 800, color: C.bg }}>Record</button>
+            </div>
           </div>)}
           {result.type === 'BOX' && (<>
             <div style={{ fontFamily: FONTS.mono, fontWeight: 700, fontSize: 16, color: C.gold, marginBottom: 4 }}>{str(result.data.smRef)}</div>
