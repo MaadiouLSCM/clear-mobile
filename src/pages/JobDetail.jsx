@@ -4,8 +4,9 @@ import { useI18n } from '../i18n';
 import { api } from '../api';
 import { C, FONTS, STATUS_MAP } from '../theme';
 import { arr, str, jobRef, clientStr, corridorStr } from '../safe';
+import JobField from './JobField';
 
-const TABS = ['items', 'documents', 'timeline', 'tracking'];
+const TABS = ['field', 'items', 'documents', 'timeline', 'tracking'];
 
 function InfoRow({ label, value }) {
   return (
@@ -26,7 +27,8 @@ export default function JobDetail() {
   const [items, setItems] = useState([]);
   const [docs, setDocs] = useState([]);
   const [tracking, setTracking] = useState([]);
-  const [tab, setTab] = useState('items');
+  const [tab, setTab] = useState('field');
+  const [rev, setRev] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,7 +38,7 @@ export default function JobDetail() {
       api('/documents?jobId=' + id).then(d => setDocs(arr(d))).catch(() => {}),
       api('/tracking?jobId=' + id).then(d => setTracking(arr(d))).catch(() => {}),
     ]).finally(() => setLoading(false));
-  }, [id]);
+  }, [id, rev]);
 
   if (loading) return <div style={{ padding: 32, textAlign: 'center', color: C.muted }}>Loading...</div>;
   if (!job) return <div style={{ padding: 32, textAlign: 'center', color: C.muted }}>Job not found</div>;
@@ -64,6 +66,7 @@ export default function JobDetail() {
         ))}
       </div>
 
+      {tab === 'field' && job && <JobField job={job} items={items} docs={docs} reload={() => setRev((x) => x + 1)} />}
       {tab === 'items' && (items.length === 0 ? <Empty /> : items.map(item => (
         <div key={item.id} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 12, marginBottom: 6 }}>
           <div style={{ fontWeight: 700, fontSize: 13, color: C.text, marginBottom: 4 }}>{str(item.description || item.materialNumber || item.itemNumber)}</div>

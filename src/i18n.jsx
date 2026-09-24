@@ -42,6 +42,7 @@ const dict = {
   status:        { fr:'Statut', en:'Status', ar:'الحالة', es:'Estado', pt:'Estado' },
   items:         { fr:'Articles', en:'Items', ar:'العناصر', es:'Artículos', pt:'Itens' },
   documents:     { fr:'Documents', en:'Documents', ar:'المستندات', es:'Documentos', pt:'Documentos' },
+  field:         { fr:'Terrain', en:'Field', ar:'الميدان', es:'Campo' },
   timeline:      { fr:'Chronologie', en:'Timeline', ar:'الجدول الزمني', es:'Cronología', pt:'Cronologia' },
   tracking:      { fr:'Suivi', en:'Tracking', ar:'التتبع', es:'Seguimiento', pt:'Rastreamento' },
   photos:        { fr:'Photos', en:'Photos', ar:'الصور', es:'Fotos', pt:'Fotos' },

@@ -19,7 +19,8 @@ export async function api(path, opts = {}) {
 
   if (res.status === 401) { setToken(null); window.location.href = '/login'; throw new Error('Unauthorized'); }
   if (raw) return res;
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  // S181 — show the server's reason (gates, validation), not just the status line
+  if (!res.ok) { let m = res.statusText; try { const j = await res.json(); m = Array.isArray(j.message) ? j.message.join('; ') : (j.message || m); } catch { /* not JSON */ } throw new Error(`${res.status} ${m}`); }
   const text = await res.text();
   if (!text) return null;
   return JSON.parse(text);
