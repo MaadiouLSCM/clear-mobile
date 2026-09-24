@@ -1,12 +1,38 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
 import { C } from '../theme';
+import { useI18n } from '../i18n';
 
 /**
  * S181 — field actions on a job, aligned with CLEAR (S156–S180): next step with the evidence each gate still needs,
  * supplier originals (commercial invoice, packing list) photographed or picked as PDF, HS codes verified, customs
  * holds classified by cause, proof of delivery with signature, pieces and GPS.
  */
+const TR = {
+  'Next step': { fr: 'Étape suivante', ar: 'الخطوة التالية', es: 'Siguiente paso' },
+  'Move': { fr: 'Avancer', ar: 'تقدم', es: 'Avanzar' },
+  'No further step.': { fr: 'Aucune étape suivante.', ar: 'لا توجد خطوة أخرى.', es: 'No hay más pasos.' },
+  'Supplier originals': { fr: 'Originaux du fournisseur', ar: 'أصول المورد', es: 'Originales del proveedor' },
+  'Commercial invoice': { fr: 'Facture commerciale', ar: 'الفاتورة التجارية', es: 'Factura comercial' },
+  'Packing list (VPL)': { fr: 'Liste de colisage (VPL)', ar: 'قائمة التعبئة (VPL)', es: 'Lista de empaque (VPL)' },
+  '✓ original': { fr: '✓ original', ar: '✓ أصلي', es: '✓ original' },
+  'draft only': { fr: 'brouillon seulement', ar: 'مسودة فقط', es: 'solo borrador' },
+  'missing': { fr: 'manquant', ar: 'مفقود', es: 'falta' },
+  'Replace': { fr: 'Remplacer', ar: 'استبدال', es: 'Reemplazar' },
+  'Photo / PDF': { fr: 'Photo / PDF', ar: 'صورة / PDF', es: 'Foto / PDF' },
+  'HS codes (verified by LSCM)': { fr: 'Codes SH (vérifiés par LSCM)', ar: 'رموز النظام المنسق (تحقق LSCM)', es: 'Códigos SA (verificados por LSCM)' },
+  'Verify': { fr: 'Vérifier', ar: 'تحقق', es: 'Verificar' },
+  'Customs holds': { fr: 'Blocages douaniers', ar: 'الحجوزات الجمركية', es: 'Retenciones aduaneras' },
+  'to classify': { fr: 'à classer', ar: 'للتصنيف', es: 'por clasificar' },
+  'Cause…': { fr: 'Cause…', ar: 'السبب…', es: 'Causa…' },
+  'Save': { fr: 'Enregistrer', ar: 'حفظ', es: 'Guardar' },
+  'Proof of delivery': { fr: 'Preuve de livraison', ar: 'إثبات التسليم', es: 'Prueba de entrega' },
+  'Receiver name': { fr: 'Nom du réceptionnaire', ar: 'اسم المستلم', es: 'Nombre del receptor' },
+  'Pieces delivered': { fr: 'Pièces livrées', ar: 'القطع المسلمة', es: 'Piezas entregadas' },
+  'Signature': { fr: 'Signature', ar: 'التوقيع', es: 'Firma' },
+  'Clear': { fr: 'Effacer', ar: 'مسح', es: 'Borrar' },
+  'Capture POD': { fr: 'Enregistrer la POD', ar: 'تسجيل إثبات التسليم', es: 'Registrar POD' },
+};
 const CAUSES = ['AUTHORITY_DISCRETIONARY', 'CLIENT_SUPPLIER_DOCUMENTS', 'HS_MISCLASSIFICATION', 'LSCM_DOCUMENTATION', 'GL_OBSERVATION_NOT_ADDRESSED', 'PERMIT_LICENCE_MISSING', 'VALUATION', 'OTHER'];
 const box = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14, marginBottom: 12 };
 const btn = (bg = C.gold) => ({ padding: '10px 14px', border: 'none', borderRadius: 10, background: bg, color: bg === C.gold ? C.bg : C.text, fontWeight: 800, fontSize: 13, cursor: 'pointer' });
@@ -14,6 +40,7 @@ const inp = { padding: '10px 12px', borderRadius: 10, border: `1px solid ${C.bor
 const toB64 = (file) => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(file); });
 
 export default function JobField({ job, items, docs, reload }) {
+  const { lang } = useI18n(); const tr = (k) => (lang !== 'en' && TR[k]?.[lang]) || k;
   const [legal, setLegal] = useState(null); const [holds, setHolds] = useState([]); const [msg, setMsg] = useState(''); const [busy, setBusy] = useState(false);
   const [hs, setHs] = useState({}); const [cls, setCls] = useState({});
   const [pod, setPod] = useState({ receiverName: '', itemsDelivered: '', condition: 'GOOD' }); const canvas = useRef(null); const drawing = useRef(false);
@@ -52,48 +79,48 @@ export default function JobField({ job, items, docs, reload }) {
     <div>
       {msg && <div style={{ ...box, color: msg.startsWith('✓') ? '#34d399' : '#fb7185', fontSize: 13 }}>{msg}</div>}
       {legal && <div style={box}>
-        <div style={{ fontWeight: 800, color: C.gold, marginBottom: 8 }}>Next step</div>
+        <div style={{ fontWeight: 800, color: C.gold, marginBottom: 8 }}>{tr('Next step')}</div>
         {legal.nextStates.map((n) => <div key={n.status} style={{ padding: '8px 0', borderTop: `1px solid ${C.border}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><b style={{ flex: 1, fontSize: 13 }}>{n.status.replace(/_/g, ' ').toLowerCase()}</b>
-            <button disabled={busy || n.missingEvidence.length > 0} onClick={() => move(n.status)} style={{ ...btn(n.missingEvidence.length ? C.surface3 : C.gold), opacity: n.missingEvidence.length ? 0.6 : 1 }}>Move</button></div>
+            <button disabled={busy || n.missingEvidence.length > 0} onClick={() => move(n.status)} style={{ ...btn(n.missingEvidence.length ? C.surface3 : C.gold), opacity: n.missingEvidence.length ? 0.6 : 1 }}>{tr('Move')}</button></div>
           {n.missingEvidence.map((m, i) => <div key={i} style={{ fontSize: 12, color: '#fbbf24', marginTop: 4 }}>• {m}</div>)}
         </div>)}
-        {!legal.nextStates.length && <div style={{ fontSize: 12, color: C.muted }}>No further step.</div>}
+        {!legal.nextStates.length && <div style={{ fontSize: 12, color: C.muted }}>{tr('No further step.')}</div>}
       </div>}
       <div style={box}>
-        <div style={{ fontWeight: 800, color: C.gold, marginBottom: 8 }}>Supplier originals</div>
-        {[['COMMERCIAL_INVOICE', 'Commercial invoice', ci], ['VPL', 'Packing list (VPL)', vpl]].map(([type, label, d]) => <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
-          <span style={{ flex: 1, fontSize: 13 }}>{label} {ok(d) ? <span style={{ color: '#34d399' }}>✓ original</span> : <span style={{ color: '#fbbf24' }}>{d ? 'draft only' : 'missing'}</span>}</span>
-          <label style={btn()}>{ok(d) ? 'Replace' : 'Photo / PDF'}<input type="file" accept="image/*,application/pdf" capture="environment" onChange={original(type)} style={{ display: 'none' }} /></label></div>)}
+        <div style={{ fontWeight: 800, color: C.gold, marginBottom: 8 }}>{tr('Supplier originals')}</div>
+        {[['COMMERCIAL_INVOICE', tr('Commercial invoice'), ci], ['VPL', tr('Packing list (VPL)'), vpl]].map(([type, label, d]) => <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
+          <span style={{ flex: 1, fontSize: 13 }}>{label} {ok(d) ? <span style={{ color: '#34d399' }}>{tr('✓ original')}</span> : <span style={{ color: '#fbbf24' }}>{d ? 'draft only' : 'missing'}</span>}</span>
+          <label style={btn()}>{ok(d) ? tr('Replace') : tr('Photo / PDF')}<input type="file" accept="image/*,application/pdf" capture="environment" onChange={original(type)} style={{ display: 'none' }} /></label></div>)}
       </div>
       {items.length > 0 && <div style={box}>
-        <div style={{ fontWeight: 800, color: C.gold, marginBottom: 8 }}>HS codes (verified by LSCM)</div>
+        <div style={{ fontWeight: 800, color: C.gold, marginBottom: 8 }}>{tr('HS codes (verified by LSCM)')}</div>
         {items.map((it) => <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 0', borderTop: `1px solid ${C.border}` }}>
           <span style={{ flex: 1, fontSize: 12 }}>{it.itemNumber} · {String(it.description || '').slice(0, 24)}</span>
           {it.hsVerifiedAt ? <span style={{ fontSize: 12, color: '#34d399' }}>✓ {it.hsCode}</span> : <>
             <input defaultValue={it.hsCode || ''} onChange={(e) => setHs({ ...hs, [it.id]: e.target.value })} placeholder="HS" inputMode="numeric" style={{ ...inp, width: 100 }} />
-            <button disabled={busy} onClick={() => run(() => api(`/customs-compliance/items/${it.id}/hs-verify`, { method: 'POST', body: hs[it.id] ? { hsCode: hs[it.id] } : {} }), 'HS verified')} style={btn()}>Verify</button></>}
+            <button disabled={busy} onClick={() => run(() => api(`/customs-compliance/items/${it.id}/hs-verify`, { method: 'POST', body: hs[it.id] ? { hsCode: hs[it.id] } : {} }), 'HS verified')} style={btn()}>{tr('Verify')}</button></>}
         </div>)}
       </div>}
       {holds.length > 0 && <div style={box}>
-        <div style={{ fontWeight: 800, color: C.gold, marginBottom: 8 }}>Customs holds</div>
+        <div style={{ fontWeight: 800, color: C.gold, marginBottom: 8 }}>{tr('Customs holds')}</div>
         {holds.map((h) => <div key={h.id} style={{ padding: '6px 0', borderTop: `1px solid ${C.border}`, fontSize: 12 }}>
-          {String(h.createdAt).slice(0, 10)} — {h.cause ? <b>{h.cause.replace(/_/g, ' ').toLowerCase()} → {String(h.attributedTo).replace(/_/g, ' ').toLowerCase()}</b> : <span style={{ color: '#fbbf24' }}>to classify</span>}
+          {String(h.createdAt).slice(0, 10)} — {h.cause ? <b>{h.cause.replace(/_/g, ' ').toLowerCase()} → {String(h.attributedTo).replace(/_/g, ' ').toLowerCase()}</b> : <span style={{ color: '#fbbf24' }}>{tr('to classify')}</span>}
           {!h.cause && <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-            <select value={cls[h.id] || ''} onChange={(e) => setCls({ ...cls, [h.id]: e.target.value })} style={inp}><option value="">Cause…</option>{CAUSES.map((c) => <option key={c} value={c}>{c.replace(/_/g, ' ').toLowerCase()}</option>)}</select>
-            <button disabled={busy || !cls[h.id]} onClick={() => run(() => api(`/customs-compliance/holds/${h.id}/classify`, { method: 'PATCH', body: { cause: cls[h.id] } }), 'hold classified')} style={btn()}>Save</button></div>}
+            <select value={cls[h.id] || ''} onChange={(e) => setCls({ ...cls, [h.id]: e.target.value })} style={inp}><option value="">{tr('Cause…')}</option>{CAUSES.map((c) => <option key={c} value={c}>{c.replace(/_/g, ' ').toLowerCase()}</option>)}</select>
+            <button disabled={busy || !cls[h.id]} onClick={() => run(() => api(`/customs-compliance/holds/${h.id}/classify`, { method: 'PATCH', body: { cause: cls[h.id] } }), 'hold classified')} style={btn()}>{tr('Save')}</button></div>}
         </div>)}
       </div>}
       {deliverable && <div style={box}>
-        <div style={{ fontWeight: 800, color: C.gold, marginBottom: 8 }}>Proof of delivery</div>
-        <input placeholder="Receiver name" value={pod.receiverName} onChange={(e) => setPod({ ...pod, receiverName: e.target.value })} style={{ ...inp, marginBottom: 8 }} />
+        <div style={{ fontWeight: 800, color: C.gold, marginBottom: 8 }}>{tr('Proof of delivery')}</div>
+        <input placeholder={tr('Receiver name')} value={pod.receiverName} onChange={(e) => setPod({ ...pod, receiverName: e.target.value })} style={{ ...inp, marginBottom: 8 }} />
         <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-          <input placeholder="Pieces delivered" inputMode="numeric" value={pod.itemsDelivered} onChange={(e) => setPod({ ...pod, itemsDelivered: e.target.value })} style={inp} />
+          <input placeholder={tr('Pieces delivered')} inputMode="numeric" value={pod.itemsDelivered} onChange={(e) => setPod({ ...pod, itemsDelivered: e.target.value })} style={inp} />
           <select value={pod.condition} onChange={(e) => setPod({ ...pod, condition: e.target.value })} style={inp}>{['GOOD', 'MINOR_DAMAGE', 'MAJOR_DAMAGE', 'PARTIAL_DELIVERY', 'REFUSED'].map((c) => <option key={c} value={c}>{c.replace(/_/g, ' ').toLowerCase()}</option>)}</select>
         </div>
-        <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>Signature</div>
+        <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>{tr('Signature')}</div>
         <canvas ref={canvas} width={320} height={140} style={{ width: '100%', height: 140, background: '#fff', borderRadius: 10, touchAction: 'none' }} onMouseDown={start} onMouseMove={draw} onMouseUp={() => (drawing.current = false)} onTouchStart={start} onTouchMove={draw} onTouchEnd={() => (drawing.current = false)} />
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}><button onClick={clearSig} style={btn(C.surface3)}>Clear</button><button disabled={busy} onClick={capturePod} style={{ ...btn(), flex: 1 }}>Capture POD</button></div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}><button onClick={clearSig} style={btn(C.surface3)}>{tr('Clear')}</button><button disabled={busy} onClick={capturePod} style={{ ...btn(), flex: 1 }}>{tr('Capture POD')}</button></div>
       </div>}
     </div>
   );
