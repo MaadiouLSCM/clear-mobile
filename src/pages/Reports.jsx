@@ -30,7 +30,7 @@ export default function Reports() {
     if (!form.jobId || !form.notes) return;
     setSending(true);
     try {
-      await api('/tasks', { method: 'POST', body: { jobId: form.jobId, title: 'Field Report: ' + t(form.type), description: form.notes, taskType: 'FIELD_REPORT', priority: form.type === 'incident' ? 'HIGH' : 'MEDIUM', status: 'TODO' } });
+      await api('/tasks', { method: 'POST', body: { jobId: form.jobId, title: 'Field Report: ' + t(form.type), description: form.notes, taskType: 'FIELD_REPORT', priority: form.type === 'incident' ? 'HIGH' : 'MEDIUM' } });
     } catch {
       const p = JSON.parse(localStorage.getItem('clear-pending') || '[]');
       p.push({ ...form, createdAt: new Date().toISOString() });

@@ -22,8 +22,8 @@ export default function Alerts() {
 
   useEffect(() => {
     Promise.allSettled([
-      api('/copq').then(d => setCopq(arr(d))).catch(() => {}),
-      api('/ncr').then(d => setNcrs(arr(d))).catch(() => {}),
+      api('/copq/events').then(d => setCopq(arr(d))).catch(() => {}), // S184: /copq does not exist
+      api('/compliance/ncrs').then(d => setNcrs(arr(d))).catch(() => {}), // S184: /ncr does not exist
     ]).finally(() => setLoading(false));
   }, []);
 

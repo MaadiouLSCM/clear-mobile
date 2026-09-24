@@ -35,7 +35,7 @@ export default function Dashboard() {
       api('/jobs').catch(() => []),
       api('/tasks').catch(() => []),
       api('/documents').catch(() => []),
-      api('/copq').catch(() => []),
+      api('/copq/events').catch(() => []),
     ]).then(([jr, tr, dr, cr]) => {
       if (!ok) return;
       const jl = arr(jr.value); const tl = arr(tr.value); const dl = arr(dr.value); const cl = arr(cr.value);

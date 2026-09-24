@@ -36,7 +36,7 @@ export default function JobDetail() {
       api('/jobs/' + id).then(setJob),
       api('/items?jobId=' + id).then(d => setItems(arr(d))).catch(() => {}),
       api('/documents?jobId=' + id).then(d => setDocs(arr(d))).catch(() => {}),
-      api('/tracking?jobId=' + id).then(d => setTracking(arr(d))).catch(() => {}),
+      api('/tracking/timeline/' + id).then(d => setTracking(arr(d?.events ?? d))).catch(() => {}), // S184: /tracking?jobId did not exist
     ]).finally(() => setLoading(false));
   }, [id, rev]);
 
